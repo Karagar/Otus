@@ -10,6 +10,7 @@ type List interface {
 	PushBack(v interface{}) *listItem  // добавить значение в конец
 	Remove(i *listItem)                // удалить элемент
 	MoveToFront(i *listItem)           // переместить элемент в начало
+	ToSlice() []interface{}            // возвращает лист в виде слайса
 }
 
 type listItem struct {
@@ -112,6 +113,17 @@ func (l *list) MoveToFront(i *listItem) {
 	l.first = i
 	l.length++
 	l.listLock.Unlock()
+}
+
+// ToSlice returned list converted to slice.
+func (l *list) ToSlice() []interface{} {
+	var retVal []interface{}
+	item := l.first
+	for i := 0; i < l.length; i++ {
+		retVal = append(retVal, item.Value)
+		item = item.Next
+	}
+	return retVal
 }
 
 func NewList() List {

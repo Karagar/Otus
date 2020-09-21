@@ -58,7 +58,6 @@ func (c *lruCache) Get(key string) (interface{}, bool) {
 // Clear.
 func (c *lruCache) Clear() {
 	c.cacheLock.Lock()
-	c.Capacity = 0
 	c.Queue = *(new(List))
 	c.Items = map[string]*cacheItem{}
 	c.cacheLock.Unlock()
