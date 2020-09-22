@@ -17,16 +17,16 @@ func Copy(fromPath string, toPath string, offset, limit int64) error {
 	intOffset := int(offset)
 	intLimit := int(limit)
 	fromFile, err := os.OpenFile(fromPath, os.O_RDONLY, 0644)
-	defer fromFile.Close()
 	if err != nil {
 		return err
 	}
+	defer fromFile.Close()
 
 	toFile, err := os.OpenFile(toPath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
-	defer toFile.Close()
 	if err != nil {
 		return err
 	}
+	defer toFile.Close()
 
 	fileInfo, err := fromFile.Stat()
 	if err != nil {
