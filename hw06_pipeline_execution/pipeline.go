@@ -25,24 +25,12 @@ func checkDone(in In, done In) (out Out) {
 }
 
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
-	pipe := make(Bi)
 	inputChan := in
 
 	for _, stage := range stages {
-		inputChan = stage(inputChan)
 		inputChan = checkDone(inputChan, done)
+		inputChan = stage(inputChan)
 	}
 
-	go func() {
-		defer close(pipe)
-		for input := range inputChan {
-			select {
-			case <-done:
-				return
-			case pipe <- input:
-			}
-		}
-	}()
-
-	return pipe
+	return inputChan
 }
