@@ -60,8 +60,25 @@ func TestUserValidation(t *testing.T) {
 	})
 
 	t.Run("phones slice", func(t *testing.T) {
-		// Write me :)
-		t.Fail()
+		u := goodUser
+
+		for _, a := range []string{"89012345678", "87654321098"} {
+			u.Phones = append(u.Phones, a)
+			errs, err := u.Validate()
+			require.Nil(t, err)
+			require.Len(t, errs, 0)
+		}
+
+		u.Phones = append(u.Phones, "fake phone")
+		errs, err := u.Validate()
+		require.Nil(t, err)
+		requireOneFieldErr(t, errs, "Phones")
+
+		u.Phones = append(u.Phones, "a")
+		u.Phones = append(u.Phones, "b")
+		errs, err = u.Validate()
+		require.Nil(t, err)
+		requireOneFieldErr(t, errs, "Phones")
 	})
 
 	t.Run("many errors", func(t *testing.T) {
@@ -69,6 +86,7 @@ func TestUserValidation(t *testing.T) {
 		u.Age = -100
 		u.Email = "123"
 		u.Role = "unknown"
+		u.Phones = append(u.Phones, "fake phone")
 
 		errs, err := u.Validate()
 		require.Nil(t, err)
@@ -77,7 +95,7 @@ func TestUserValidation(t *testing.T) {
 		for _, e := range errs {
 			fields = append(fields, e.Field)
 		}
-		require.ElementsMatch(t, fields, []string{"Age", "Email", "Role"})
+		require.ElementsMatch(t, fields, []string{"Age", "Email", "Role", "Phones"})
 	})
 }
 
