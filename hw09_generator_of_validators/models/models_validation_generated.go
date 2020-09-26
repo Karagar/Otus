@@ -13,45 +13,9 @@ type ValidationError struct {
 	Err error
 }
 
-func (o Response) Validate() ([]ValidationError, error) {
-	validationErrorList := []ValidationError{}
-	err := ValidationError{}
-
-	func() {
-		switch o.Code {
-		case 200,404,500:
-		default:
-			err = ValidationError{"Code", errors.New("failed to validate field Code with condition in:200,404,500")}
-			validationErrorList = append(validationErrorList, err)
-		}
-	}()
-	return validationErrorList, nil
-}
-
 func (o User) Validate() ([]ValidationError, error) {
 	validationErrorList := []ValidationError{}
 	err := ValidationError{}
-
-	func() {
-		if len(o.ID) != 36 {
-			err = ValidationError{"ID", errors.New("failed to validate field ID with condition len:36")}
-			validationErrorList = append(validationErrorList, err)
-		}
-	}()
-
-	func() {
-		if o.Age < 18 {
-			err = ValidationError{"Age", errors.New("failed to validate field Age with condition min:18")}
-			validationErrorList = append(validationErrorList, err)
-		}
-	}()
-
-	func() {
-		if o.Age > 50 {
-			err = ValidationError{"Age", errors.New("failed to validate field Age with condition max:50")}
-			validationErrorList = append(validationErrorList, err)
-		}
-	}()
 
 	func() {
 		re := regexp.MustCompile("^\\w+@\\w+\\.\\w+$")
@@ -82,6 +46,27 @@ func (o User) Validate() ([]ValidationError, error) {
 			break
 		}
 	}
+
+	func() {
+		if len(o.ID) != 36 {
+			err = ValidationError{"ID", errors.New("failed to validate field ID with condition len:36")}
+			validationErrorList = append(validationErrorList, err)
+		}
+	}()
+
+	func() {
+		if o.Age < 18 {
+			err = ValidationError{"Age", errors.New("failed to validate field Age with condition min:18")}
+			validationErrorList = append(validationErrorList, err)
+		}
+	}()
+
+	func() {
+		if o.Age > 50 {
+			err = ValidationError{"Age", errors.New("failed to validate field Age with condition max:50")}
+			validationErrorList = append(validationErrorList, err)
+		}
+	}()
 	return validationErrorList, nil
 }
 
@@ -92,6 +77,21 @@ func (o App) Validate() ([]ValidationError, error) {
 	func() {
 		if len(o.Version) != 5 {
 			err = ValidationError{"Version", errors.New("failed to validate field Version with condition len:5")}
+			validationErrorList = append(validationErrorList, err)
+		}
+	}()
+	return validationErrorList, nil
+}
+
+func (o Response) Validate() ([]ValidationError, error) {
+	validationErrorList := []ValidationError{}
+	err := ValidationError{}
+
+	func() {
+		switch o.Code {
+		case 200,404,500:
+		default:
+			err = ValidationError{"Code", errors.New("failed to validate field Code with condition in:200,404,500")}
 			validationErrorList = append(validationErrorList, err)
 		}
 	}()

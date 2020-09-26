@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -17,16 +18,16 @@ type definition struct {
 }
 
 type nodeStr struct {
-	nodeType    string              //Истинный тип структуры (присутствует только в базовых типах и их обёртках)
-	fieldList   map[string]fieldStr //Список полей структуры
-	isValidated bool                //Нужно ли писать валидаторы
+	nodeType    string              // Истинный тип структуры (присутствует только в базовых типах и их обёртках)
+	fieldList   map[string]fieldStr // Список полей структуры
+	isValidated bool                // Нужно ли писать валидаторы
 }
 
 type fieldStr struct {
-	primaryFieldType   string //Основной тип данных
-	secondaryFieldType string //Второстепенный тип данных для мапов
-	fieldTag           string //Тег для валидации
-	isList             bool   //Является ли списком
+	primaryFieldType   string // Основной тип данных
+	secondaryFieldType string // Второстепенный тип данных для мапов
+	fieldTag           string // Тег для валидации
+	isList             bool   // Является ли списком
 }
 
 type conditionParams struct {
@@ -41,11 +42,11 @@ func main() {
 
 	definitionStr, err := analyzeDeclaration(filename)
 	if err != nil {
-		fmt.Errorf("%w", err)
+		panic(fmt.Errorf("%w", err))
 	}
 	err = generateValidation(filename, definitionStr)
 	if err != nil {
-		fmt.Errorf("%w", err)
+		panic(fmt.Errorf("%w", err))
 	}
 	return
 }
@@ -143,12 +144,12 @@ func generateValidation(filename string, definitionStr *definition) error {
 	// Открываем
 	var re = regexp.MustCompile(`^(.*).go$`)
 	newFileName := re.ReplaceAllString(filename, "$1") + "_validation_generated.go"
+	funcTmp := template.New("template")
 	validationFile, err := os.Create(newFileName)
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
 	defer validationFile.Close()
-	funcTmp := template.New("func")
 
 	// Вступление
 	t := template.Must(funcTmp.Parse(codeBlocks["main"]["intro"]))
@@ -157,64 +158,75 @@ func generateValidation(filename string, definitionStr *definition) error {
 		return fmt.Errorf("failed to generate validation: %w", err)
 	}
 
-	// Сюжет
-	for key, value := range definitionStr.objects {
-		if value.isValidated {
-			// Объявления функций валидации
-			t := template.Must(funcTmp.Parse(codeBlocks["main"]["validateDeclaration"]))
-			err = t.Execute(validationFile, conditionParams{key, "", "", ""})
+	// Генерируем функции
+	err = generateFunctions(definitionStr.objects, funcTmp, validationFile)
+	if err != nil {
+		return fmt.Errorf("failed to generate validation: %w", err)
+	}
+
+	return nil
+}
+
+func generateFunctions(classes map[string]nodeStr, funcTmp *template.Template, validationFile *os.File) error {
+	for key, value := range classes {
+		if !value.isValidated {
+			continue
+		}
+		// Объявления функций валидации
+		t := template.Must(funcTmp.Parse(codeBlocks["main"]["validateDeclaration"]))
+		err := t.Execute(validationFile, conditionParams{key, "", "", ""})
+		if err != nil {
+			return fmt.Errorf("failed to generate validation: %w", err)
+		}
+		for objKey, objValue := range value.fieldList {
+			if objValue.fieldTag == "" {
+				continue
+			}
+			conditions := strings.Split(objValue.fieldTag, "|")
+			if !objValue.isList {
+				objName := "o." + objKey
+				err = generateConditions(conditions, objKey, objName, objValue, funcTmp, validationFile)
+				if err != nil {
+					return fmt.Errorf("failed to generate validation: %w", err)
+				}
+				continue
+			}
+			_, err = validationFile.WriteString("	for _, v := range o." + objKey + " {\n")
 			if err != nil {
 				return fmt.Errorf("failed to generate validation: %w", err)
 			}
-			for objKey, objValue := range value.fieldList {
-				if objValue.fieldTag != "" {
-					conditions := strings.Split(objValue.fieldTag, "|")
-					if objValue.isList {
-						_, err = validationFile.WriteString("	for _, v := range o." + objKey + " {\n")
-						if err != nil {
-							return fmt.Errorf("failed to generate validation: %w", err)
-						}
-						for _, v := range conditions {
-							p := conditionParams{
-								"v", v[strings.Index(v, ":")+1:], objKey, v,
-							}
-							if v[:strings.Index(v, ":")] == "in" && objValue.primaryFieldType == "string" {
-								p.Value = strings.ReplaceAll(p.Value, ",", "\",\"")
-							}
-							t := template.Must(funcTmp.Parse(codeBlocks[objValue.primaryFieldType][v[:strings.Index(v, ":")]]))
-							err = t.Execute(validationFile, p)
-							if err != nil {
-								return fmt.Errorf("failed to generate validation: %w", err)
-							}
-						}
-						_, err = validationFile.WriteString("\n\t\tif err.Err != nil {\n\t\t\tbreak\n\t\t}\n\t}\n")
-						if err != nil {
-							return fmt.Errorf("failed to generate validation: %w", err)
-						}
-					} else {
-						for _, v := range conditions {
-							p := conditionParams{
-								"o." + objKey, v[strings.Index(v, ":")+1:], objKey, v,
-							}
-							if v[:strings.Index(v, ":")] == "in" && objValue.primaryFieldType == "string" {
-								p.Value = strings.ReplaceAll(p.Value, ",", "\",\"")
-							}
-							t := template.Must(funcTmp.Parse(codeBlocks[objValue.primaryFieldType][v[:strings.Index(v, ":")]]))
-							err = t.Execute(validationFile, p)
-							if err != nil {
-								return fmt.Errorf("failed to generate validation: %w", err)
-							}
-						}
-					}
-				}
+			objName := "v"
+			err = generateConditions(conditions, objKey, objName, objValue, funcTmp, validationFile)
+			if err != nil {
+				return fmt.Errorf("failed to generate validation: %w", err)
 			}
-			_, err = validationFile.WriteString("\treturn validationErrorList, nil\n}\n")
+			_, err = validationFile.WriteString("\n\t\tif err.Err != nil {\n\t\t\tbreak\n\t\t}\n\t}\n")
 			if err != nil {
 				return fmt.Errorf("failed to generate validation: %w", err)
 			}
 		}
+		_, err = validationFile.WriteString("\treturn validationErrorList, nil\n}\n")
+		if err != nil {
+			return fmt.Errorf("failed to generate validation: %w", err)
+		}
 	}
+	return nil
+}
 
+func generateConditions(conditions []string, objKey string, objName string, objValue fieldStr, temp *template.Template, dest io.Writer) error {
+	for _, v := range conditions {
+		p := conditionParams{
+			objName, v[strings.Index(v, ":")+1:], objKey, v,
+		}
+		if v[:strings.Index(v, ":")] == "in" && objValue.primaryFieldType == "string" {
+			p.Value = strings.ReplaceAll(p.Value, ",", "\",\"")
+		}
+		t := template.Must(temp.Parse(codeBlocks[objValue.primaryFieldType][v[:strings.Index(v, ":")]]))
+		err := t.Execute(dest, p)
+		if err != nil {
+			return fmt.Errorf("failed to generate validation: %w", err)
+		}
+	}
 	return nil
 }
 
