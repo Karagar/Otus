@@ -5,40 +5,43 @@ import "sync"
 type Key string
 
 type Cache interface {
-	Set(key string, value interface{}) bool // Добавить значение в кэш по ключу
-	Get(key string) (interface{}, bool)     // Получить значение из кэша по ключу
-	Clear()                                 // Очистить кэш
+	Set(key Key, value interface{}) bool // Добавить значение в кэш по ключу
+	Get(key string) (interface{}, bool)  // Получить значение из кэша по ключу
+	Clear()                              // Очистить кэш
 }
 
 type lruCache struct {
-	Capacity  int
-	Queue     List
-	Items     map[string]*cacheItem
+	capacity  int
+	queue     List
+	items     map[string]*cacheItem
 	cacheLock sync.Mutex
 }
 
+type cacheItem struct {
+	Value    interface{}
+	ListItem *listItem
+}
+
 // Set.
-func (c *lruCache) Set(key string, value interface{}) bool {
+func (c *lruCache) Set(key Key, value interface{}) bool {
+	strKey := string(key)
 	c.cacheLock.Lock()
 	defer c.cacheLock.Unlock()
-	if len(c.Items) == 0 {
-		c.Items = map[string]*cacheItem{}
-	}
-	elem, isExist := c.Items[key]
+	elem, isExist := c.items[strKey]
 	if isExist {
-		c.Items[key].Value = value
-		c.Queue.MoveToFront(elem.ListItem)
+		c.items[strKey].Value = value
+		c.queue.MoveToFront(elem.ListItem)
 		return isExist
 	}
 	newCacheItem := &cacheItem{
 		Value:    value,
-		ListItem: c.Queue.PushFront(value),
+		ListItem: c.queue.PushFront(value),
 	}
-	newCacheItem.ListItem.CacheKey = key
-	c.Items[key] = newCacheItem
-	if c.Queue.Len() > c.Capacity {
-		delete(c.Items, c.Queue.Back().CacheKey)
-		c.Queue.Remove(c.Queue.Back())
+	newCacheItem.ListItem.CacheKey = strKey
+	c.items[strKey] = newCacheItem
+	if c.queue.Len() > c.capacity {
+		delete(c.items, c.queue.Back().CacheKey)
+		c.queue.Remove(c.queue.Back())
 	}
 	return isExist
 }
@@ -47,10 +50,10 @@ func (c *lruCache) Set(key string, value interface{}) bool {
 func (c *lruCache) Get(key string) (interface{}, bool) {
 	c.cacheLock.Lock()
 	defer c.cacheLock.Unlock()
-	elem, isExist := c.Items[key]
+	elem, isExist := c.items[key]
 	if isExist {
-		c.Queue.MoveToFront(elem.ListItem)
-		return c.Items[key].Value, isExist
+		c.queue.MoveToFront(elem.ListItem)
+		return c.items[key].Value, isExist
 	}
 	return nil, isExist
 }
@@ -58,19 +61,15 @@ func (c *lruCache) Get(key string) (interface{}, bool) {
 // Clear.
 func (c *lruCache) Clear() {
 	c.cacheLock.Lock()
-	c.Queue = *(new(List))
-	c.Items = map[string]*cacheItem{}
-	c.cacheLock.Unlock()
-}
-
-type cacheItem struct {
-	Value    interface{}
-	ListItem *listItem
+	defer c.cacheLock.Unlock()
+	c.queue = &list{}
+	c.items = map[string]*cacheItem{}
 }
 
 func NewCache(capacity int) Cache {
 	return &lruCache{
-		Queue:    &list{},
-		Capacity: capacity,
+		queue:    &list{},
+		capacity: capacity,
+		items:    map[string]*cacheItem{},
 	}
 }

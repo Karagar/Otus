@@ -48,4 +48,26 @@ func TestList(t *testing.T) {
 		}
 		require.Equal(t, []int{70, 80, 60, 40, 10, 30, 50}, elems)
 	})
+
+	t.Run("custom", func(t *testing.T) {
+		l := NewList()
+
+		l.PushBack("odin")    // [odin]
+		first := l.Front()    // odin : check it already first
+		l.Remove(first)       // [] check what if first and last was deleted
+		l.PushBack("dva")     // [dva]
+		l.PushFront("tri")    // [tri, dva]
+		l.PushBack("chetyre") // [tri, dva, chetyre]
+		require.Equal(t, 3, l.Len())
+
+		middle := l.Front().Next // dva
+		require.Equal(t, "dva", middle.Value)
+		l.Remove(middle) // [tri, chetyre]
+		require.Equal(t, 2, l.Len())
+		l.Remove(l.Back())
+		l.MoveToFront(l.Back()) // [tri] check MoveToFront with 1 elem
+
+		require.Equal(t, "tri", l.Front().Value)
+		require.Equal(t, "tri", l.Back().Value)
+	})
 }

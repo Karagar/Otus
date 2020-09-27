@@ -10,7 +10,6 @@ type List interface {
 	PushBack(v interface{}) *listItem  // добавить значение в конец
 	Remove(i *listItem)                // удалить элемент
 	MoveToFront(i *listItem)           // переместить элемент в начало
-	ToSlice() []interface{}            // возвращает лист в виде слайса
 }
 
 type listItem struct {
@@ -50,6 +49,7 @@ func (l *list) PushFront(v interface{}) *listItem {
 		Next:  l.first,
 	}
 	l.listLock.Lock()
+	defer l.listLock.Unlock()
 	if l.length != 0 {
 		l.first.Prev = &item
 	} else {
@@ -57,7 +57,6 @@ func (l *list) PushFront(v interface{}) *listItem {
 	}
 	l.first = &item
 	l.length++
-	l.listLock.Unlock()
 	return &item
 }
 
@@ -69,6 +68,7 @@ func (l *list) PushBack(v interface{}) *listItem {
 		Next:  nil,
 	}
 	l.listLock.Lock()
+	defer l.listLock.Unlock()
 	if l.length != 0 {
 		l.last.Next = &item
 	} else {
@@ -76,13 +76,13 @@ func (l *list) PushBack(v interface{}) *listItem {
 	}
 	l.last = &item
 	l.length++
-	l.listLock.Unlock()
 	return &item
 }
 
 // Remove removed one listItem element from double-linked list.
 func (l *list) Remove(i *listItem) {
 	l.listLock.Lock()
+	defer l.listLock.Unlock()
 	if i.Next != nil {
 		i.Next.Prev = i.Prev
 	}
@@ -96,13 +96,13 @@ func (l *list) Remove(i *listItem) {
 		l.first = i.Next
 	}
 	l.length--
-	l.listLock.Unlock()
 }
 
 // MoveToFront.
 func (l *list) MoveToFront(i *listItem) {
 	l.Remove(i)
 	l.listLock.Lock()
+	defer l.listLock.Unlock()
 	i.Prev = nil
 	i.Next = l.first
 	if l.length != 0 {
@@ -112,18 +112,6 @@ func (l *list) MoveToFront(i *listItem) {
 	}
 	l.first = i
 	l.length++
-	l.listLock.Unlock()
-}
-
-// ToSlice returned list converted to slice.
-func (l *list) ToSlice() []interface{} {
-	var retVal []interface{}
-	item := l.first
-	for i := 0; i < l.length; i++ {
-		retVal = append(retVal, item.Value)
-		item = item.Next
-	}
-	return retVal
 }
 
 func NewList() List {

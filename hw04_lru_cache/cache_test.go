@@ -1,7 +1,6 @@
 package hw04_lru_cache //nolint:golint,stylecheck
 
 import (
-	"errors"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -51,73 +50,40 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("purge logic", func(t *testing.T) {
-		newCache := NewCache(6)
-		err := error(nil)
-		slice := newCache.(*lruCache).Queue.ToSlice()
-		targetSlice := []interface{}{}
+		c := NewCache(6)
 
-		for i, elem := range targetSlice {
-			if elem != slice[i] {
-				err = errors.New("Expected and recieved list are different")
-			}
-		}
+		c.Set("4", "chetyre")
+		c.Set("3", "tri")
+		c.Set("2", "dva")
+		c.Set("1", "odin")
+		c.Set("2", "dva")
+		c.Set("3", "tri")
+		c.Set("5", "piat")
+		c.Set("6", "shest")
+		c.Set("1", "odin")
+		c.Set("1", "odin")
+		c.Set("7", "sem")
 
-		if err != nil {
-			t.Errorf("\n\t%s", err)
-		} else {
-			newCache.Set("1", "odin")
-			newCache.Set("1", "odin")
-			newCache.Set("1", "odin")
-			newCache.Set("1", "odin")
+		val, ok := c.Get("4")
+		require.False(t, ok)
+		require.Nil(t, val)
 
-			slice := newCache.(*lruCache).Queue.ToSlice()
-			targetSlice = []interface{}{"odin"}
-			for i, elem := range targetSlice {
-				if elem != slice[i] {
-					err = errors.New("Expected and recieved list are different")
-				}
-			}
-		}
+		c.Clear()
+		c.Set("1", "odin")
+		c.Set("2", "dva")
+		c.Set("3", "tri")
 
-		if err != nil {
-			t.Errorf("\n\t%s", err)
-		} else {
-			newCache.Set("2", "dva")
-			newCache.Set("3", "tri")
-			newCache.Set("4", "chetyre")
-			newCache.Set("2", "dva")
-			newCache.Set("3", "tri")
-			newCache.Set("5", "piat")
-			newCache.Set("6", "shest")
-			newCache.Set("1", "odin")
-			newCache.Set("1", "odin")
-			newCache.Set("1", "odin")
-			newCache.Set("7", "sem")
+		val, ok = c.Get("3")
+		require.True(t, ok)
+		require.Equal(t, "tri", val)
 
-			slice := newCache.(*lruCache).Queue.ToSlice()
-			targetSlice = []interface{}{"sem", "odin", "shest", "piat", "tri", "dva"}
-			for i, elem := range targetSlice {
-				if elem != slice[i] {
-					err = errors.New("Expected and recieved list are different")
-				}
-			}
-		}
+		val, ok = c.Get("2")
+		require.True(t, ok)
+		require.Equal(t, "dva", val)
 
-		if err != nil {
-			t.Errorf("\n\t%s", err)
-		} else {
-			newCache.Get("1")
-			newCache.Set("7", "sem")
-			newCache.Get("1")
-
-			slice := newCache.(*lruCache).Queue.ToSlice()
-			targetSlice = []interface{}{"odin", "sem", "shest", "piat", "tri", "dva"}
-			for i, elem := range targetSlice {
-				if elem != slice[i] {
-					err = errors.New("Expected and recieved list are different")
-				}
-			}
-		}
+		val, ok = c.Get("1")
+		require.True(t, ok)
+		require.Equal(t, "odin", val)
 	})
 }
 
@@ -130,8 +96,8 @@ func TestCacheMultithreading(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 1000000; i++ {
-			c.Set(strconv.Itoa(i), i)
+		for i := 0; i < 1_000_000; i++ {
+			c.Set(Key(strconv.Itoa(i)), i)
 		}
 	}()
 
