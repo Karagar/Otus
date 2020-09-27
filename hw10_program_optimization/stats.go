@@ -63,11 +63,10 @@ func countDomains(u users, domain string) (DomainStat, error) {
 	result := make(DomainStat)
 	re := regexp.MustCompile("\\." + domain)
 	user := User{}
-	lines := []string{}
 
 	for _, user = range u {
 		if re.MatchString(user.Email) {
-			if lines = strings.SplitN(user.Email, "@", 2); len(lines) > 1 {
+			if lines := strings.SplitN(user.Email, "@", 2); len(lines) > 1 {
 				result[strings.ToLower(lines[1])]++
 			}
 		}
