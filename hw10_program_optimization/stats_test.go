@@ -36,4 +36,15 @@ func TestGetDomainStat(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, DomainStat{}, result)
 	})
+
+	t.Run("regexp injection", func(t *testing.T) { // before that's was an error here becouse of empty users
+		result, err := GetDomainStat(bytes.NewBufferString(data), "|")
+		require.NoError(t, err)
+		require.Equal(t, DomainStat{
+			"browsecat.com":   2,
+			"browsedrive.gov": 1,
+			"linktype.com":    1,
+			"teklist.net":     1,
+		}, result)
+	})
 }
