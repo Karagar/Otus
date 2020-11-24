@@ -34,7 +34,7 @@ func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, ou
 func (tco *TelnetClientObj) Connect() error {
 	conn, err := net.DialTimeout("tcp", tco.address, tco.timeout)
 	tco.conn = conn
-	return err
+	fmt.Errorf("error while connecting: %w", err)
 }
 
 func (tco *TelnetClientObj) Send() error {
@@ -59,7 +59,7 @@ func Transfer(r io.Reader, w io.Writer, closedFlag bool) error {
 		return scanner.Err()
 	}
 	_, err := w.Write([]byte(fmt.Sprintf("%s\n", scanner.Text())))
-	return err
+	return fmt.Errorf("error while transfering data: %w", err)
 }
 
 // Place your code here

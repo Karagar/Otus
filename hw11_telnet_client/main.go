@@ -16,7 +16,7 @@ func main() {
 	flag.Parse()
 	timeout, err := time.ParseDuration(*timeoutStr)
 	if err != nil {
-		println(fmt.Errorf("error while parse timeout duration: %v", err))
+		println(fmt.Errorf("error while parse timeout duration: %w", err))
 		return
 	}
 	if len(flag.Args()) != 2 {
