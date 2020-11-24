@@ -25,7 +25,7 @@ type TelnetClientObj struct {
 	closedFlag bool
 }
 
-var ConnectionClosedErr = errors.New("Connection closed")
+var ErrConnectionClosed = errors.New("connection closed")
 
 func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, out io.Writer) TelnetClient {
 	return &TelnetClientObj{address, timeout, in, out, nil, false}
@@ -52,7 +52,7 @@ func (tco *TelnetClientObj) Close() error {
 
 func Transfer(r io.Reader, w io.Writer, closedFlag bool) error {
 	if closedFlag {
-		return ConnectionClosedErr
+		return ErrConnectionClosed
 	}
 	scanner := bufio.NewScanner(r)
 	if !scanner.Scan() {

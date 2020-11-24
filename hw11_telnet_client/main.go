@@ -16,7 +16,7 @@ func main() {
 	flag.Parse()
 	timeout, err := time.ParseDuration(*timeoutStr)
 	if err != nil {
-		println(fmt.Errorf("Error while parse timeout duration: %v", err))
+		println(fmt.Errorf("error while parse timeout duration: %v", err))
 		return
 	}
 	if len(flag.Args()) != 2 {
@@ -49,9 +49,7 @@ func main() {
 				break
 			}
 		}
-		return
 	}()
-
 	go func() {
 		for {
 			err = client.Receive()
@@ -60,7 +58,6 @@ func main() {
 				break
 			}
 		}
-		return
 	}()
 
 	select {
