@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -23,71 +24,53 @@ func main() {
 		return
 	}
 	targetAdress := net.JoinHostPort(flag.Args()[0], flag.Args()[1])
-	go func() {
-		handleServer(targetAdress)
-	}()
-	time.Sleep(2 * time.Second)
+	errorChan := make(chan error)
+	signlsChan := make(chan os.Signal, 1)
+	signal.Notify(signlsChan, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	client := NewTelnetClient(targetAdress, timeout, os.Stdin, os.Stdout)
-	client.Connect()
-	go func() {
-		for {
-			client.Send()
-			if err != nil {
-				break
-			}
-		}
-		return
-	}()
-	go func() {
-		for {
-			client.Receive()
-			if err != nil {
-				break
-			}
-		}
-		return
-	}()
-	time.Sleep(300 * time.Second)
-	client.Close()
-}
-
-func handleServer(address string) {
-	l, err := net.Listen("tcp", address)
+	err = client.Connect()
 	if err != nil {
-		log.Fatalf("Cannot listen: %v", err)
+		log.Fatal(err)
 	}
-	defer l.Close()
-	log.Println("LISTENED")
 
-	for {
-		conn, err := l.Accept()
+	defer func() {
+		if err := client.Close(); err != nil {
+			log.Fatal(err)
+		}
+		close(signlsChan)
+		close(errorChan)
+	}()
+
+	go func() {
+		for {
+			err = client.Send()
+			if err != nil {
+				errorChan <- err
+				break
+			}
+		}
+		return
+	}()
+
+	go func() {
+		for {
+			err = client.Receive()
+			if err != nil {
+				errorChan <- err
+				break
+			}
+		}
+		return
+	}()
+
+	select {
+	case <-signlsChan:
+		return
+	case err = <-errorChan:
 		if err != nil {
-			log.Fatalf("Cannot accept: %v", err)
+			log.Println(err)
+			fmt.Fprintf(os.Stderr, "Connection closed\n")
+			return
 		}
-		log.Println("ACCEPTED")
-		handleConnection(conn)
 	}
-}
-
-func handleConnection(conn net.Conn) {
-	defer conn.Close()
-	conn.Write([]byte(fmt.Sprintf("Welcome to %s, friend from %s\n", conn.LocalAddr(), conn.RemoteAddr())))
-
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-		text := scanner.Text()
-		log.Printf("RECEIVED: %s", text)
-		if text == "quit" || text == "exit" {
-			break
-		}
-
-		conn.Write([]byte(fmt.Sprintf("I have received '%s'\n", text)))
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("Error happend on connection with %s: %v", conn.RemoteAddr(), err)
-	}
-
-	log.Printf("Closing connection with %s", conn.RemoteAddr())
-
 }
