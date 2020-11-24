@@ -59,7 +59,7 @@ func Transfer(r io.Reader, w io.Writer, closedFlag bool) error {
 		return scanner.Err()
 	}
 	_, err := w.Write([]byte(fmt.Sprintf("%s\n", scanner.Text())))
-	return fmt.Errorf("error while transfering data: %w", err)
+	return fmt.Errorf("error while transferring data: %w", err)
 }
 
 // Place your code here
