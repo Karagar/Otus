@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -57,15 +56,11 @@ func Transfer(r io.Reader, w io.Writer, closedFlag bool) error {
 	if closedFlag {
 		return ErrConnectionClosed
 	}
-	scanner := bufio.NewScanner(r)
-	if !scanner.Scan() {
-		return scanner.Err()
-	}
-	_, err := w.Write([]byte(fmt.Sprintf("%s\n", scanner.Text())))
+	_, err := io.Copy(w, r)
 	if err != nil {
-		err = fmt.Errorf("error while transferring data: %w", err)
+		return fmt.Errorf("error while transferring: %w", err)
 	}
-	return err
+	return nil
 }
 
 // Place your code here

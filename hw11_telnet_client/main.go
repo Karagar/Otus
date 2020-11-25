@@ -42,22 +42,10 @@ func main() {
 	}()
 
 	go func() {
-		for {
-			err = client.Send()
-			if err != nil {
-				errorChan <- err
-				break
-			}
-		}
+		errorChan <- client.Send()
 	}()
 	go func() {
-		for {
-			err = client.Receive()
-			if err != nil {
-				errorChan <- err
-				break
-			}
-		}
+		errorChan <- client.Receive()
 	}()
 
 	select {
